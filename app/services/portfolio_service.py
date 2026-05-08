@@ -17,3 +17,13 @@ def save_portfolio_result(user_id, json_data, theme, focus, foto=None):
     except Exception as e:
         db.session.rollback()
         return False, f"Gagal menyimpan: {str(e)}", None
+    
+
+def get_all_user_results(user_id):
+    """Mengambil semua riwayat portofolio milik user"""
+    # Mengurutkan dari yang terbaru (descending)
+    return Result.query.filter_by(user_id=user_id).order_by(Result.created_at.desc()).all()
+
+def get_result_details(result_id, user_id):
+    """Mengambil satu detail portofolio milik user tertentu"""
+    return Result.query.filter_by(id=result_id, user_id=user_id).first()

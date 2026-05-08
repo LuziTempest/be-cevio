@@ -5,6 +5,9 @@ from app.services.llm_service import generate_portfolio_json
 from app.services.portfolio_service import save_portfolio_result
 from app.middlewares.require_auth import token_required
 from app.schemas.response import success_response, error_response
+from app.services.portfolio_service import get_all_user_results, get_result_details
+from app.schemas.result import result_schema, results_list_schema
+
 import psycopg2
 import os
 # Membuat Blueprint untuk rute generate/umum
@@ -140,3 +143,35 @@ def save_result(current_user):
         )
     else:
         return error_response(message=message, status_code=500)
+    
+
+
+# --- 1. Endpoint untuk List Portofolio ---
+@generate_bp.route('/my-portfolios', methods=['GET'])
+@token_required
+def get_my_portfolios(current_user):
+    # Ambil semua data dari service
+    results = get_all_user_results(current_user['id'])
+    
+    # Format menggunakan schema list
+    formatted_results = results_list_schema(results)
+    
+    return success_response(
+        data=formatted_results,
+        message="Daftar portofolio berhasil diambil"
+    )
+
+# --- 2. Endpoint untuk Detail Portofolio Spesifik ---
+@generate_bp.route('/portfolio/<int:result_id>', methods=['GET'])
+@token_required
+def get_portfolio_detail(current_user, result_id):
+    # Ambil satu data spesifik
+    result = get_result_details(result_id, current_user['id'])
+    
+    if not result:
+        return error_response(message="Portofolio tidak ditemukan", status_code=404)
+        
+    return success_response(
+        data=result_schema(result),
+        message="Detail portofolio berhasil diambil"
+    )
