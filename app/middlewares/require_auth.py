@@ -3,8 +3,10 @@ from flask import request, jsonify
 import jwt
 import os
 
-# Import fungsi koneksi dari auth_service yang sudah kamu buat sebelumnya
-from app.services.auth_service import get_db_connection
+# Import Model dan Schema (ORM)
+# Catatan: Jika kamu merename file modelnya jadi user.py, ubah tulisan 'users' di bawah menjadi 'user'
+from app.models.users import User 
+from app.schemas.user import user_schema
 
 def token_required(f):
     @wraps(f)
@@ -25,26 +27,15 @@ def token_required(f):
             # 2. Decode token
             data = jwt.decode(token, os.getenv('JWT_SECRET'), algorithms=["HS256"])
             
-            # 3. Cari user di database menggunakan Raw SQL
-            conn = get_db_connection()
-            cur = conn.cursor()
+            # 3. Cari user di database menggunakan ORM (berdasarkan Primary Key / ID)
+            user_obj = User.query.get(data['user_id'])
             
-            cur.execute("SELECT id, name, email FROM users WHERE id = %s", (data['user_id'],))
-            user_data = cur.fetchone() # Mengambil 1 baris (tuple)
-            
-            cur.close()
-            conn.close()
-
-            # Jika hasil query kosong
-            if not user_data:
+            # Jika hasil query kosong (user sudah dihapus dari DB tapi token masih ada)
+            if not user_obj:
                 return jsonify({'error': 'User tidak valid atau sudah dihapus.'}), 401
             
-            # 4. Ubah tuple menjadi dictionary agar mudah dipakai
-            current_user = {
-                "id": user_data[0],
-                "name": user_data[1],
-                "email": user_data[2]
-            }
+            # 4. Format objek ORM menjadi dictionary menggunakan schema yang sudah dibuat
+            current_user = user_schema(user_obj)
                 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Sesi login telah kedaluwarsa. Silakan login kembali.'}), 401

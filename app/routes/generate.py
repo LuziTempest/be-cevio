@@ -2,7 +2,9 @@ from flask import Blueprint, jsonify
 from flask import Blueprint, jsonify, request
 from app.services.pdf_service import extract_text_from_pdf
 from app.services.llm_service import generate_portfolio_json
+from app.services.portfolio_service import save_portfolio_result
 from app.middlewares.require_auth import token_required
+from app.schemas.response import success_response, error_response
 import psycopg2
 import os
 # Membuat Blueprint untuk rute generate/umum
@@ -105,3 +107,36 @@ def generate_portfolio(current_user): # <--- TAMBAHKAN PARAMETER current_user
         "fokus_terpilih": focus,
         "data": portfolio_data
     }), 200
+
+@generate_bp.route('/save-portfolio', methods=['POST'])
+@token_required
+def save_result(current_user):
+    data = request.get_json()
+    
+    # Ambil atribut dari request
+    content = data.get('data') 
+    theme = data.get('tema_terpilih')
+    focus = data.get('fokus_terpilih')
+    foto = data.get('foto')  # <--- Tangkap URL/path foto dari FE
+    
+    # Foto tidak dimasukkan ke dalam pengecekan ini karena bersifat opsional
+    if not all([content, theme, focus]):
+        return error_response(message="Data, tema, dan fokus wajib dikirimkan", status_code=400)
+
+    # Kirim ke service beserta foto
+    success, message, result_id = save_portfolio_result(
+        user_id=current_user['id'], 
+        json_data=content, 
+        theme=theme, 
+        focus=focus,
+        foto=foto  # <--- Kirim parameter foto
+    )
+
+    if success:
+        return success_response(
+            data={"result_id": result_id},
+            message=message,
+            status_code=201
+        )
+    else:
+        return error_response(message=message, status_code=500)

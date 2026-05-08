@@ -1,6 +1,10 @@
+import os
 from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
+
+# Import objek db dari file extensions
+from app.extensions import db
 
 def create_app():
     # 1. Load variabel dari .env
@@ -12,14 +16,36 @@ def create_app():
     # 3. Konfigurasi CORS agar Next.js (port 3000) bisa menembak API ini
     CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
-    # 4. Registrasi Blueprints (Rute Modular)
-    # Kita import di dalam fungsi agar terhindar dari Circular Import
+    # ==========================================
+    # 4. KONFIGURASI DATABASE (ORM SQLALCHEMY)
+    # ==========================================
+    db_user = os.getenv("DB_USER")
+    db_password = os.getenv("DB_PASSWORD")
+    db_host = os.getenv("DB_HOST")
+    db_port = os.getenv("DB_PORT", "5432") # Gunakan default 5432 jika kosong
+    db_name = os.getenv("DB_NAME")
+
+    # Format URL Koneksi PostgreSQL
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Matikan fitur ini untuk hemat memori server
+
+    # Hubungkan ORM dengan aplikasi Flask
+    db.init_app(app)
+
+    # Sinkronisasi Tabel Otomatis
+    # Jika tabel belum ada di database, ORM akan membuatnya sesuai Model
+    with app.app_context():
+        # Import model-modelmu di sini agar dikenali sebelum pembuatan tabel
+        from app.models.users import User 
+        from app.models.result import Result
+        db.create_all()
+    # ==========================================
+
+    # 5. Registrasi Blueprints (Rute Modular)
     from .routes.generate import generate_bp
     from .routes.auth import auth_bp
 
-    # Prefix url agar semua rute di file generate.py diawali dengan /api
     app.register_blueprint(generate_bp, url_prefix='/api')
-    # Prefix url agar rute login/register diawali dengan /api/auth
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
     return app
