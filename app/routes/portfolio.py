@@ -5,9 +5,11 @@ from app.middlewares.require_auth import token_required
 from app.schemas.response import error_response, success_response
 from app.schemas.result import (
     PortfolioGenerateResponse,
+    PortfolioPhotoUpdateRequest,
     PortfolioSaveRequest,
     ResultDTO,
 )
+from app.services.file_service import save_user_file
 from app.services.llm_service import generate_portfolio_json
 from app.services.pdf_service import extract_text_from_pdf
 from app.services.portfolio_service import (
@@ -15,9 +17,50 @@ from app.services.portfolio_service import (
     get_portfolio_by_title,
     get_result_details,
     save_portfolio_result,
+    update_portfolio_photo,
 )
 
 portfolio_bp = Blueprint("portfolio", __name__)
+
+
+@portfolio_bp.route("/photo", methods=["POST"])
+@token_required
+def upload_portfolio_photo(current_user):
+    """
+    Mengunggah file foto (Overwrite file fisik)
+    Dan memperbarui database HANYA jika field foto masih kosong.
+    """
+    try:
+        if "foto" not in request.files:
+            return error_response(message="Tidak ada foto yang diunggah", status_code=400)
+
+        foto_file = request.files["foto"]
+
+        if foto_file.filename == "":
+            return error_response(message="Nama file kosong", status_code=400)
+
+        # 1. Simpan file ke storage (Otomatis menimpa foto_profil.jpg sebelumnya)
+        foto_url = save_user_file(foto_file, current_user["id"])
+        if not foto_url:
+            return error_response(
+                message="Format file tidak valid. Gunakan JPG, JPEG, atau PNG.",
+                status_code=400,
+            )
+
+        # 2. Update database (Hanya jika field foto kosong)
+        success, message = update_portfolio_photo(
+            user_id=current_user["id"], foto_url=foto_url
+        )
+
+        if success:
+            return success_response(
+                data={"foto_url": foto_url}, message=message, status_code=200
+            )
+        else:
+            return error_response(message=message, status_code=400)
+
+    except Exception as e:
+        return error_response(message=f"Terjadi kesalahan: {str(e)}", status_code=500)
 
 
 @portfolio_bp.route("/generate", methods=["POST"])
@@ -77,7 +120,6 @@ def save_portfolio(current_user):
             theme=save_req.tema_terpilih,
             focus=save_req.fokus_terpilih,
             title=save_req.title,
-            foto=save_req.foto,
         )
 
         if success:
@@ -105,7 +147,7 @@ def get_my_portfolios(current_user):
 
         return success_response(data=data, message="Daftar portofolio berhasil diambil")
     except Exception as e:
-        return error_response(message=f"Terjadi kesalahan: {str(e)}", status_code=500)
+        return error_response(message=f"Terjadi kesalahan saat mengambil data", status_code=500)
 
 
 @portfolio_bp.route("/<int:result_id>", methods=["GET"])

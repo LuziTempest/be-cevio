@@ -10,7 +10,10 @@ asset_bp = Blueprint("asset", __name__)
 @asset_bp.route("/photo", methods=["POST"])
 @token_required
 def upload_photo(current_user):
-    """Endpoint untuk mengunggah foto profil"""
+    """
+    Endpoint generic: Hanya mengunggah file foto ke storage.
+    Tidak melakukan perubahan apa pun ke database portofolio.
+    """
     if "foto" not in request.files:
         return error_response(message="Tidak ada foto yang diunggah", status_code=400)
 
@@ -24,7 +27,7 @@ def upload_photo(current_user):
     if foto_url:
         return success_response(
             data={"foto_url": foto_url},
-            message="Foto profil berhasil diperbarui",
+            message="Foto berhasil diunggah ke storage",
             status_code=200,
         )
     else:

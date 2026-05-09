@@ -6,22 +6,21 @@ from app.models.result import Result
 def slugify(text):
     """Mengubah teks menjadi format slug (huruf kecil, tanpa spasi, hanya alfanumerik dan hyphen)"""
     text = text.lower()
-    text = re.sub(r'\s+', '-', text)  # Ganti spasi dengan hyphen
-    text = re.sub(r'[^a-z0-9-]', '', text)  # Hapus karakter non-alfanumerik kecuali hyphen
-    text = re.sub(r'-+', '-', text)  # Hapus hyphen ganda
+    text = re.sub(r'\s+', '-', text)
+    text = re.sub(r'[^a-z0-9-]', '', text)
+    text = re.sub(r'-+', '-', text)
     return text.strip('-')
 
 def save_portfolio_result(user_id, json_data, theme, focus, title, foto=None):
     try:
-        # 1. CEK BATASAN: Satu user hanya boleh punya 1 portofolio
+        # Satu user hanya boleh punya 1 portofolio
         existing_user_portfolio = Result.query.filter_by(user_id=user_id).first()
         if existing_user_portfolio:
             return False, "Anda sudah memiliki portofolio. Setiap akun hanya diperbolehkan memiliki satu portofolio.", None
 
-        # 2. Slugify judul
         formatted_title = slugify(title)
         
-        # 3. Cek duplikasi judul secara global (untuk URL unik)
+        # Cek duplikasi judul secara global
         existing_title = Result.query.filter_by(title=formatted_title).first()
         if existing_title:
             return False, "Judul portofolio sudah digunakan oleh orang lain, silakan cari judul lain", None
@@ -40,21 +39,38 @@ def save_portfolio_result(user_id, json_data, theme, focus, title, foto=None):
     except Exception as e:
         db.session.rollback()
         return False, f"Gagal menyimpan: {str(e)}", None
-    
+
+def update_portfolio_photo(user_id, foto_url):
+    """
+    Memperbarui URL foto di database jika masih kosong ATAU jika ekstensinya berubah.
+    Ini mencegah error 404 jika user ganti dari .jpg ke .png.
+    """
+    try:
+        portfolio = Result.query.filter_by(user_id=user_id).first()
+        if not portfolio:
+            return False, "Portofolio tidak ditemukan. Silakan buat portofolio terlebih dahulu."
+
+        # Update database jika:
+        # 1. Belum ada foto sama sekali
+        # 2. ATAU path foto berubah (misal ganti ekstensi dari .jpg ke .png)
+        if not portfolio.foto or portfolio.foto != foto_url:
+            portfolio.foto = foto_url
+            db.session.commit()
+            return True, "Foto berhasil diunggah dan database diperbarui."
+        
+        # Jika path sama (hanya menimpa file fisik dengan ekstensi yang sama)
+        return True, "Foto berhasil diperbarui (file fisik ditimpa)."
+
+    except Exception as e:
+        db.session.rollback()
+        return False, f"Gagal sinkronisasi ke database: {str(e)}"
 
 def get_all_user_results(user_id):
-    """
-    Mengambil semua riwayat portofolio milik user.
-    (Meskipun dibatasi 1, fungsi ini tetap mengembalikan list agar kompatibel dengan schema lama)
-    """
     return Result.query.filter_by(user_id=user_id).order_by(Result.created_at.desc()).all()
 
 def get_result_details(result_id, user_id):
-    """Mengambil satu detail portofolio milik user tertentu"""
     return Result.query.filter_by(id=result_id, user_id=user_id).first()
 
 def get_portfolio_by_title(title):
-    """Mengambil portofolio berdasarkan judul (Public)"""
-    # Pastikan mencari dengan format slug
     formatted_title = slugify(title)
     return Result.query.filter_by(title=formatted_title).first()

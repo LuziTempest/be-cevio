@@ -46,11 +46,14 @@ class PortfolioDataDTO(BaseModel):
 # REQUEST DTOs
 # ==========================================
 class PortfolioSaveRequest(BaseModel):
-    title: str = Field(..., min_length=1, max_length=255)
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
     data: PortfolioDataDTO
     tema_terpilih: str
     fokus_terpilih: str
-    foto: Optional[str] = None
+
+
+class PortfolioPhotoUpdateRequest(BaseModel):
+    foto: str  # URL foto yang sudah diupload via /assets/photo
 
 
 # ==========================================
