@@ -1,55 +1,69 @@
 from flask import Blueprint, request
-from app.services.auth_service import register_user, login_user
+from pydantic import ValidationError
 
-# IMPORT SCHEMAS
-from app.schemas.response import success_response, error_response
-from app.schemas.user import user_schema
+from app.middlewares.require_auth import token_required
+from app.schemas.response import error_response, success_response
+from app.schemas.user import UserDTO, UserLoginRequest, UserRegisterRequest
+from app.services.auth_service import login_user, register_user
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
-@auth_bp.route('/register', methods=['POST'])
+
+@auth_bp.route("/me", methods=["GET"])
+@token_required
+def get_me(current_user):
+    """Mendapatkan data profil user yang sedang login"""
+    try:
+        # current_user didapat dari middleware token_required
+        user_dto = UserDTO.from_orm(current_user["_obj"])
+        return success_response(
+            data=user_dto.dict(), message="Data profil berhasil diambil"
+        )
+    except Exception as e:
+        return error_response(message=f"Terjadi kesalahan: {str(e)}", status_code=500)
+
+
+@auth_bp.route("/register", methods=["POST"])
 def register():
-    # Mengambil data JSON dari request body
-    data = request.get_json()
-    name = data.get('name')
-    email = data.get('email')
-    password = data.get('password')
+    try:
+        raw_data = request.get_json()
+        register_data = UserRegisterRequest(**raw_data)
+        success, message, user_dto = register_user(register_data)
 
-    # Validasi input sederhana
-    if not name or not email or not password:
-        return error_response(message="Nama, email, dan password wajib diisi!", status_code=400)
+        if success:
+            return success_response(
+                data=user_dto.dict(), message=message, status_code=201
+            )
+        else:
+            return error_response(message=message, status_code=400)
 
-    # Panggil service untuk registrasi
-    success, message = register_user(name, email, password)
-    
-    if success:
-        return success_response(message=message, status_code=201) # 201 Created
-    else:
-        return error_response(message=message, status_code=400) # 400 Bad Request
+    except ValidationError as e:
+        return error_response(
+            message="Validasi gagal", status_code=400, errors=e.errors()
+        )
+    except Exception as e:
+        return error_response(message=f"Terjadi kesalahan: {str(e)}", status_code=500)
 
-@auth_bp.route('/login', methods=['POST'])
+
+@auth_bp.route("/login", methods=["POST"])
 def login():
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    try:
+        raw_data = request.get_json()
+        login_data = UserLoginRequest(**raw_data)
+        success, message, login_response_dto = login_user(login_data)
 
-    if not email or not password:
-        return error_response(message="Email dan password wajib diisi!", status_code=400)
+        if success:
+            return success_response(
+                data=login_response_dto.dict(), message=message, status_code=200
+            )
+        else:
+            return error_response(message=message, status_code=401)
 
-    # Panggil service untuk login
-    success, message, result = login_user(email, password)
-    
-    if success:
-        # 1. result['user'] adalah Objek Model dari ORM, format dulu pakai schema
-        formatted_user = user_schema(result['user'])
-        
-        # 2. Gabungkan token dan user yang sudah diformat menjadi dictionary
-        response_data = {
-            "token": result['token'],
-            "user": formatted_user
-        }
-        
-        # 3. Kembalikan dengan format response standar
-        return success_response(data=response_data, message=message, status_code=200)
-    else:
-        return error_response(message=message, status_code=401) # 401 Unauthorized
+    except ValidationError as e:
+        return error_response(
+            message="Email atau password tidak valid",
+            status_code=400,
+            errors=e.errors(),
+        )
+    except Exception as e:
+        return error_response(message=f"Terjadi kesalahan: {str(e)}", status_code=500)

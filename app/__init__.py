@@ -4,7 +4,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Import objek db dari file extensions
-from app.extensions import db
+from app.extensions import db, migrate
 
 def create_app():
     # 1. Load variabel dari .env
@@ -13,46 +13,44 @@ def create_app():
     # 2. Inisialisasi Flask
     app = Flask(__name__)
 
-    # 3. Konfigurasi CORS agar Next.js (port 3000) bisa menembak API ini
+    # 3. Konfigurasi CORS
     CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
     # ==========================================
-    # 4. KONFIGURASI DATABASE (ORM SQLALCHEMY)
+    # 4. KONFIGURASI APLIKASI
     # ==========================================
     db_user = os.getenv("DB_USER")
     db_password = os.getenv("DB_PASSWORD")
     db_host = os.getenv("DB_HOST")
-    db_port = os.getenv("DB_PORT", "5432") # Gunakan default 5432 jika kosong
+    db_port = os.getenv("DB_PORT", "5432")
     db_name = os.getenv("DB_NAME")
 
-    # Menentukan letak folder app/static/uploads
     UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-    
-    # Batasi maksimal file yang diupload (misal: 5 Megabytes)
     app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
-
-    # Format URL Koneksi PostgreSQL
     app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Matikan fitur ini untuk hemat memori server
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "fallback-secret-key-123")
+    
+    # URL Aplikasi untuk asset
+    app.config['APP_URL'] = os.getenv("APP_URL", "http://localhost:8080").rstrip('/')
 
-    # Hubungkan ORM dengan aplikasi Flask
+    # Inisialisasi DB & Migrate
     db.init_app(app)
+    migrate.init_app(app, db)
 
-    # Sinkronisasi Tabel Otomatis
-    # Jika tabel belum ada di database, ORM akan membuatnya sesuai Model
-    with app.app_context():
-        # Import model-modelmu di sini agar dikenali sebelum pembuatan tabel
-        from app.models.users import User 
-        from app.models.result import Result
-        db.create_all()
     # ==========================================
-
-    # 5. Registrasi Blueprints (Rute Modular)
-    from .routes.generate import generate_bp
+    # 5. REGISTRASI BLUEPRINTS (RUTE MODULAR)
+    # ==========================================
+    from .routes.main import main_bp
     from .routes.auth import auth_bp
+    from .routes.asset import asset_bp
+    from .routes.portfolio import portfolio_bp
 
-    app.register_blueprint(generate_bp, url_prefix='/api')
+    # Prefix utama /api
+    app.register_blueprint(main_bp, url_prefix='/api')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(asset_bp, url_prefix='/api/assets')
+    app.register_blueprint(portfolio_bp, url_prefix='/api/portfolios')
 
     return app
