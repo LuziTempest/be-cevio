@@ -8,13 +8,9 @@ class Result(db.Model):
     
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     content = db.Column(JSONB, nullable=False)
-    
     theme = db.Column(db.String(50), nullable=False)
     focus = db.Column(db.String(50), nullable=False)
-    
-    # Atribut Baru: Menyimpan URL atau nama file foto
     foto = db.Column(db.String(255), nullable=True) 
-    
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

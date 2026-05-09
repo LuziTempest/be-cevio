@@ -25,6 +25,13 @@ def create_app():
     db_port = os.getenv("DB_PORT", "5432") # Gunakan default 5432 jika kosong
     db_name = os.getenv("DB_NAME")
 
+    # Menentukan letak folder app/static/uploads
+    UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+    
+    # Batasi maksimal file yang diupload (misal: 5 Megabytes)
+    app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
+
     # Format URL Koneksi PostgreSQL
     app.config['SQLALCHEMY_DATABASE_URI'] = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # Matikan fitur ini untuk hemat memori server

@@ -8,7 +8,7 @@ def save_portfolio_result(user_id, json_data, theme, focus, foto=None):
             content=json_data,
             theme=theme,
             focus=focus,
-            foto=foto,  # <--- Masukkan ke sini
+            foto=foto,
             user_id=user_id
         )
         db.session.add(new_result)
@@ -20,8 +20,10 @@ def save_portfolio_result(user_id, json_data, theme, focus, foto=None):
     
 
 def get_all_user_results(user_id):
-    """Mengambil semua riwayat portofolio milik user"""
-    # Mengurutkan dari yang terbaru (descending)
+    """
+    Mengambil semua riwayat portofolio milik user.
+    Mengurutkan dari yang terbaru (descending)
+    """
     return Result.query.filter_by(user_id=user_id).order_by(Result.created_at.desc()).all()
 
 def get_result_details(result_id, user_id):

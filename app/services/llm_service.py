@@ -9,7 +9,7 @@ def generate_portfolio_json(raw_text, theme, focus):
     # Konfigurasi API Key dari file .env
     genai.configure(api_key=os.getenv("LLM_API_KEY"))
     
-    # Gunakan model Gemini 1.5 Flash (Cepat & hemat biaya)
+    # Gunakan model Gemini 2.5 flash-lite (Cepat & hemat biaya)
     model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
     # Merancang instruksi (Prompt)
