@@ -120,6 +120,7 @@ def save_portfolio(current_user):
             theme=save_req.tema_terpilih,
             focus=save_req.fokus_terpilih,
             title=save_req.title,
+            foto=save_req.foto,
         )
 
         if success:

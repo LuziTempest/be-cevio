@@ -50,6 +50,7 @@ class PortfolioSaveRequest(BaseModel):
     data: PortfolioDataDTO
     tema_terpilih: str
     fokus_terpilih: str
+    foto: Optional[str] = None
 
 
 class PortfolioPhotoUpdateRequest(BaseModel):
