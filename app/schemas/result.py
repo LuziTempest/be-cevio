@@ -9,9 +9,6 @@ from pydantic import BaseModel, Field
 # ==========================================
 class ProfilDTO(BaseModel):
     nama: str
-    email: str
-    linkedin: Optional[str] = ""
-    github: Optional[str] = ""
     deskripsi_diri: str
 
 

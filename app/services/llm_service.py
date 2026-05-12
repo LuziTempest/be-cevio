@@ -29,9 +29,6 @@ def generate_portfolio_json(raw_text, theme, focus):
     {{
         "profil": {{
             "nama": "...",
-            "email": "...",
-            "linkedin": "...",
-            "github": "...",
             "deskripsi_diri": "..."
         }},
         "pendidikan": [
@@ -59,6 +56,7 @@ def generate_portfolio_json(raw_text, theme, focus):
         
         # Parsing string balasan LLM menjadi objek dictionary Python
         json_data = json.loads(response.text)
+        print(json_data)
         return True, json_data
 
     except json.JSONDecodeError:
